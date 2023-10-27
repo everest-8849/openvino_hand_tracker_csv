@@ -1,4 +1,12 @@
-# Hand tracking with OpenVINO
+# Hand tracking with OpenVINO, with CSV output
+
+```
+conda create --name hand_tracker
+conda install python=3.10
+python -m pip install -r requirements.txt
+conda activate hand_tracker
+python .\HandTracker.py -i .\data\test.mp4
+```
 
 Running Google Mediapipe Hand Tracking models on OpenVINO.
 

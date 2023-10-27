@@ -7,7 +7,8 @@ from FPS import FPS, now
 import argparse
 import os
 from openvino.inference_engine import IENetwork, IECore
-
+import csv
+import time
 class HandTracker:
     def __init__(self, input_src=None,
                 pd_xml="models/palm_detection_FP32.xml", 
@@ -26,6 +27,8 @@ class HandTracker:
         self.lm_score_threshold = lm_score_threshold
         self.use_gesture = use_gesture
         self.crop = crop
+
+
         
         
         if input_src.endswith('.jpg') or input_src.endswith('.png') :
@@ -262,6 +265,7 @@ class HandTracker:
                                     [0, 17, 18, 19, 20]]
                 lines = [np.array([lm_xy[point] for point in line]) for line in list_connections]
                 cv2.polylines(frame, lines, False, (255, 0, 0), 2, cv2.LINE_AA)
+
                 if self.use_gesture:
                     # color depending on finger state (1=open, 0=close, -1=unknown)
                     color = { 1: (0,255,0), 0: (0,0,255), -1:(0,255,255)}
@@ -297,6 +301,24 @@ class HandTracker:
     def run(self):
 
         self.fps = FPS(mean_nb_frames=20)
+        file_time = time.strftime("%Y%m%d-%H%M%S")
+        file_name = f"{file_time}_hand_track.csv"
+        os.makedirs("data", exist_ok=True)
+        header = {
+            'thumb': [1, 2, 3, 4],
+            'index': [5, 6, 7, 8],
+            'middle': [9, 10, 11, 12],
+            'ring': [13, 14, 15, 16],
+            'little': [17, 18, 19, 20],
+        }
+        suffixes = ['x', 'y', 'z']
+        csv_header = [f'{finger}_{num}_{suffix}' for finger, numbers in header.items() for num in numbers for suffix in suffixes]
+
+        with open(f"data/{file_name}", 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile, delimiter=",")
+            writer.writerow(csv_header)
+
+    
 
         nb_pd_inferences = 0
         nb_lm_inferences = 0
@@ -352,6 +374,17 @@ class HandTracker:
                     nb_lm_inferences += 1
                     self.lm_postprocess(r, inference)
                     self.lm_render(annotated_frame, r)
+                    lm_raw = np.squeeze(inference[self.lm_landmarks])
+                    list_3d = [lm_raw[i:i+3] for i in range(0,len(lm_raw),3)]
+
+
+                    with open(f"data/{file_name}", 'a', newline='') as csvfile:
+                        writer = csv.writer(csvfile, delimiter=",")
+                        writer.writerow(lm_raw)
+                
+
+
+
 
             if not self.crop:
                 annotated_frame = annotated_frame[pad_h:pad_h+h, pad_w:pad_w+w]
